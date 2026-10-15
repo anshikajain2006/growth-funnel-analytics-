@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Growth Memo: Funnel and Cohort Analysis</title>
+<style>
+  @page { size: Letter; margin: 0.7in 0.75in 0.7in 0.75in; }
+  :root {
+    --ink: #0b0b0b; --ink-2: #52514e; --ink-3: #8a8984; --rule: #e6e5e1;
+    --blue: #2a78d6; --orange: #eb6834; --panel: #f6f5f2;
+  }
+  * { box-sizing: border-box; }
+  html, body { background: #fff; }
+  body {
+    font-family: "Segoe UI", Arial, sans-serif; color: var(--ink);
+    font-size: 10pt; line-height: 1.45; margin: 0;
+    -webkit-print-color-adjust: exact; print-color-adjust: exact;
+  }
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 8px; margin-bottom: 14px; }
+  .kicker { font-size: 8pt; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-2); font-weight: 600; }
+  h1 { font-size: 19pt; line-height: 1.2; margin: 4px 0 6px; font-weight: 700; }
+  .meta { font-size: 8.5pt; color: var(--ink-2); display: flex; flex-wrap: wrap; gap: 4px 18px; }
+  h2 { font-size: 12pt; margin: 18px 0 6px; font-weight: 700; display: flex; gap: 8px; align-items: baseline; }
+  h2 .n { color: var(--blue); font-size: 10.5pt; }
+  p { margin: 0 0 8px; }
+  strong { font-weight: 650; }
+  .summary { background: var(--panel); border-left: 3px solid var(--blue); padding: 10px 14px; margin: 0 0 4px; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 10px 0 2px; }
+  .kpi { border: 1px solid var(--rule); border-radius: 6px; padding: 7px 10px; }
+  .kpi .v { font-size: 15pt; font-weight: 700; line-height: 1.1; }
+  .kpi .v.hot { color: var(--orange); }
+  .kpi .l { font-size: 7.8pt; color: var(--ink-2); line-height: 1.3; margin-top: 2px; }
+  table { border-collapse: collapse; width: 100%; font-size: 8.8pt; margin: 6px 0 8px; }
+  th { text-align: left; font-weight: 600; color: var(--ink-2); border-bottom: 1px solid var(--ink-3); padding: 4px 6px; }
+  td { border-bottom: 1px solid var(--rule); padding: 4px 6px; vertical-align: top; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tr.hot td { color: var(--orange); font-weight: 600; }
+  figure { margin: 6px 0 4px; break-inside: avoid; }
+  figure img { width: 100%; display: block; }
+  figure.narrow img { width: 86%; margin: 0 auto; }
+  figcaption { font-size: 7.8pt; color: var(--ink-3); margin-top: 2px; }
+  ol.actions { padding-left: 0; list-style: none; counter-reset: a; margin: 4px 0 0; }
+  ol.actions li { counter-increment: a; position: relative; padding: 0 0 0 26px; margin-bottom: 9px; break-inside: avoid; }
+  ol.actions li::before { content: counter(a); position: absolute; left: 0; top: 1px; width: 18px; height: 18px; border-radius: 50%;
+    background: var(--blue); color: #fff; font-size: 8.5pt; font-weight: 700; text-align: center; line-height: 18px; }
+  ol.actions .t { font-weight: 700; }
+  ul.lim { padding-left: 16px; margin: 4px 0 0; }
+  ul.lim li { margin-bottom: 7px; }
+  .pb { break-before: page; }
+  footer { margin-top: 14px; padding-top: 6px; border-top: 1px solid var(--rule); font-size: 7.8pt; color: var(--ink-3); }
+  code { font-family: Consolas, monospace; font-size: 8.5pt; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="kicker">Growth analysis memo</div>
+  <h1>Three in four visitors never add to cart: sizing the activation gap</h1>
+  <div class="meta">
+    <span><strong>To:</strong> VP Product / Head of Growth</span>
+    <span><strong>From:</strong> Anshika Jain, Growth Analyst</span>
+    <span><strong>Data:</strong> REES46 cosmetics store event log, 1 Oct 2019 – 29 Feb 2020</span>
+    <span><strong>Source:</strong> <code>funnel_cohort_analysis.ipynb</code></span>
+  </div>
+</header>
+
+<h2><span class="n">1</span> Executive summary</h2>
+<div class="summary">
+<p>I analysed 19.6 million de-duplicated events from 1.64 million users of an online cosmetics store across a four-stage funnel: visit, add to cart, purchase, repeat purchase. <strong>The largest loss is the first step: 1,241,050 users (75.7%) never add an item to cart, which is 77% of all users lost anywhere in the funnel.</strong> At current traffic of 387,836 users a month, a 5-percentage-point lift in visit→cart is worth an estimated <strong>5,289 additional purchasers and $216K in revenue per month</strong> ($2.6M a year, +17% on a $1.27M monthly base). Retention is the second structural gap: only 9.1% of new customers buy again the following month. I would prioritise activation, specifically turning single-product visits into multi-product visits (63% of visitors, activating at 10.9%). Every experiment should be judged on visit→purchase, not cart rate, because October delivered a 10-point cart-rate jump that produced no extra purchasers.</p>
+</div>
+<div class="kpis">
+  <div class="kpi"><div class="v">24.3%</div><div class="l">of visitors add to cart (activation)</div></div>
+  <div class="kpi"><div class="v hot">1.24M</div><div class="l">users lost at activation, the largest drop-off</div></div>
+  <div class="kpi"><div class="v">9.1%</div><div class="l">M1 repeat-purchase rate, Nov–Jan cohorts</div></div>
+  <div class="kpi"><div class="v hot">$216K/mo</div><div class="l">value of +5pp visit→cart at current traffic</div></div>
+</div>
+
+<div class="section">
+<h2><span class="n">2</span> Funnel overview</h2>
+<p>Each stage is a strict subset of the one before, so drop-offs add up. Users are counted once across the five months.</p>
+<table>
+  <thead><tr><th>Stage</th><th>Definition</th><th class="num">Users</th><th class="num">Conv. from prior</th><th class="num">Drop-off</th></tr></thead>
+  <tbody>
+    <tr><td>Acquisition</td><td>Any event in the period</td><td class="num">1,639,358</td><td class="num">—</td><td class="num">—</td></tr>
+    <tr class="hot"><td>Activation</td><td>Added ≥ 1 item to cart</td><td class="num">398,308</td><td class="num">24.3%</td><td class="num">1,241,050 (75.7%)</td></tr>
+    <tr><td>Conversion</td><td>…and completed ≥ 1 purchase</td><td class="num">109,607</td><td class="num">27.5%</td><td class="num">288,701 (72.5%)</td></tr>
+    <tr><td>Retention</td><td>…and purchased in ≥ 2 calendar months</td><td class="num">17,679</td><td class="num">16.1%</td><td class="num">91,928 (83.9%)</td></tr>
+  </tbody>
+</table>
+<figure class="narrow">
+  <img src="../outputs/01_funnel.png" alt="Horizontal bar funnel: 1,639,358 acquired; 398,308 activated; 109,607 converted; 17,679 retained.">
+  <figcaption>Figure 1. Four-stage user funnel, Oct 2019 – Feb 2020. Notebook §3.</figcaption>
+</figure>
+<p>The two middle transitions lose users at similar rates (75.7% and 72.5%). Activation still dominates because it applies to a base four times larger. End-to-end, 6.7% of visitors buy and 1.1% buy in more than one month.</p>
+</div>
+
+<div class="section">
+<h2><span class="n">3</span> Cohort retention</h2>
+<figure class="narrow">
+  <img src="../outputs/03_cohort_retention_heatmap.png" alt="Retention heatmap by first-purchase cohort, M0 to M4.">
+  <figcaption>Figure 2. Share of each first-purchase cohort that purchased again k months later. Notebook §4.</figcaption>
+</figure>
+<p><strong>Month-1 retention is 9.1% for the Nov–Jan cohorts (8.5–9.8%) and 11.7% weighted across all four measurable cohorts.</strong> October's 18.5% is inflated: the log begins on 1 October, so that cohort includes established customers who were not new. After M1 the curve flattens. The November cohort still has 10.1% buying in M2 and 7.9% in M3. Customers are lost at the first repeat purchase, not gradually after it.</p>
+<p>Cohort value is not improving. At equal age, cumulative revenue per customer after two months fell from $49.86 (November cohort) to $47.15 (January cohort), a 5% decline.</p>
+</div>
+
+<div class="section">
+<h2><span class="n">4</span> The highest-leverage opportunity: visit → cart</h2>
+<p>Activation loses the most users in absolute terms (1,241,050), so a fixed rate improvement there moves the most people. Sizing it uses the monthly funnel averaged over five months: <strong>387,836 users a month, 25.5% visit→cart, 27.3% cart→purchase, $40.79 AOV.</strong></p>
+<table>
+  <thead><tr><th>+5pp visit→cart (25.5% → 30.5%)</th><th class="num">Per month</th></tr></thead>
+  <tbody>
+    <tr><td>Additional users adding to cart (387,836 × 5pp)</td><td class="num">19,392</td></tr>
+    <tr><td>Additional purchasers (× 27.3% cart→purchase)</td><td class="num">5,289</td></tr>
+    <tr class="hot"><td>Additional revenue (× $40.79 AOV, one order each)</td><td class="num">$215,772</td></tr>
+    <tr><td>Annualised · share of $1,269,654 monthly baseline</td><td class="num">$2.59M · +17.0%</td></tr>
+  </tbody>
+</table>
+<figure class="narrow">
+  <img src="../outputs/05_opportunity_5pp.png" alt="Bar chart: +5pp at visit to cart worth $216K per month; at cart to purchase $202K per month.">
+  <figcaption>Figure 3. Monthly value of a +5pp lift at each stage. Notebook §6.</figcaption>
+</figure>
+<p>The estimate is conservative in one respect: it counts one order per new purchaser and no repeat purchases. It is optimistic in another: it assumes the extra carters convert at today's 27.3%. An equal lift at checkout is worth $202K a month, so activation only wins if new carters convert at ≥ 25.5%. October is the warning. Its visit→cart rate was 33.5% against 23.5% for Nov–Feb, but cart→purchase was 19.0%, and visit→purchase stayed in its 6.4–8.4% band. Each point of activation lift is worth about $43K a month <em>if it carries through to purchase</em>.</p>
+</div>
+
+<div class="section">
+<h2><span class="n">5</span> Recommended interventions</h2>
+<p>The diagnostics in notebook §7 locate the activation loss precisely. 63.0% of users who view a product view only one, and they activate at 10.9%, against 32.9% at 3–4 products and 54.3% at 5–9. And 76.5% of users who ever add to cart do so in their first session.</p>
+<ol class="actions">
+  <li><span class="t">Turn single-product visits into multi-product visits.</span> Add "pairs well with" and "complete the routine" modules plus one-tap quick-add on product pages and listings. These target the 1-product band (10.9% activation), where the next band up activates at 18.3%. Run it as an A/B test on landing product pages, because browsing depth may reflect intent rather than cause it. The test settles which.</li>
+  <li><span class="t">Re-engage the 126,129 high-intent non-carters.</span> These users viewed ≥ 3 products across ≥ 2 sessions and never added to cart (10.2% of non-activated users). They are identified and have shown intent twice. Trigger a browse-abandonment email or push within 24 hours of the second session, featuring the products they viewed. Since 76.5% of activation happens in session one, this is the largest second-session pool still worth winning. Keep a holdout to measure incrementality.</li>
+  <li><span class="t">Make visit→purchase the primary metric for every activation test.</span> Report cart rate as a diagnostic only. October shows cart rate can rise 10 points with no gain in purchasers, and a lift only beats an equal checkout fix if new carters convert at ≥ 25.5%. Pre-registering visit→purchase (6.4–8.4% baseline) prevents shipping changes that inflate carts without adding revenue.</li>
+</ol>
+</div>
+
+<div class="section">
+<h2><span class="n">6</span> Limitations</h2>
+<ul class="lim">
+  <li><strong>Five months is too short for the full retention picture.</strong> The October cohort can be followed only to M4 and February only to M0, so M5–M6 retention and true LTV cannot be measured. There is no prior-year baseline to separate seasonality from trend: November includes Black Friday and has the highest cart→purchase rate (32.4%). October's cohort is left-censored, which is why it is excluded from the headline M1 figure.</li>
+  <li><strong>The event log cannot explain its own anomalies.</strong> The October cart spike could be a promotion or a change in how <code>cart</code> was logged, and the data cannot distinguish the two. There is no order ID, so orders are inferred from sessions. 911 purchasers have no cart event. How <code>user_id</code> is assigned is undocumented: if it is per device, acquisition is overcounted and activation understated.</li>
+  <li><strong>Correlation and missing context.</strong> The link between browsing depth and activation is observational. The data has no traffic source, device, campaign, margin or acquisition cost, so the opportunity is stated in revenue, not profit, and cannot be split by channel. The $216K figure is a sizing for prioritisation, not a forecast. A controlled test is the only way to confirm it.</li>
+</ul>
+</div>
+
+<footer>Every figure in this memo is printed by a cell in <code>funnel_cohort_analysis.ipynb</code>; §8 of the notebook collects them in a single table. Dataset: “eCommerce Events History in Cosmetics Shop”, REES46 via Kaggle.</footer>
+
+</body>
+</html>
