@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Interactive funnel and cohort analysis of 1.64M shoppers at the REES46 cosmetics store: where visitors drop off, cohort retention and LTV, and what a +5pp add-to-cart lift is worth.">
+<meta property="og:title" content="The Add-to-Cart Leak">
+<meta property="og:description" content="Interactive funnel and cohort analysis of 1.64M shoppers at the REES46 cosmetics store: where visitors drop off, cohort retention and LTV, and what a +5pp add-to-cart lift is worth.">
+<meta property="og:type" content="website">
+<meta name="theme-color" content="#f4f4f8" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#111018" media="(prefers-color-scheme: dark)">
+<style>
+:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}
+</style>
+<title>The Add-to-Cart Leak</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Public+Sans:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: one editorial column (~1040px) read top to bottom as the notebook's argument; a sticky chapter rail; charts sit on quiet white panels. */
+:root {
+  --bg: #f4f4f8;
+  --panel: #ffffff;
+  --ink: #16151f;
+  --ink-2: #4a4959;
+  --ink-3: #85849a;
+  --rule: #e2e1ea;
+  --grid: #ecebf2;
+  --s1: #2a78d6;        /* data blue, kept from the notebook */
+  --s3: #1baf7a;        /* second series */
+  --hot: #eb6834;       /* the finding, kept from the notebook */
+  --hot-soft: #fdeee7;
+  --heat-0: #e6effb; --heat-1: #5598e7; --heat-2: #0d366b;
+  --track: #ecebf3;
+  --f-display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --f-body: "Public Sans", "Segoe UI", system-ui, sans-serif;
+  --f-data: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111018; --panel: #1a1923; --ink: #efeef6; --ink-2: #bab9ca; --ink-3: #807f94;
+    --rule: #2c2b39; --grid: #262532; --s1: #3987e5; --s3: #199e70; --hot: #ee7647; --hot-soft: #3a2119;
+    --heat-0: #1c2538; --heat-1: #2a78d6; --heat-2: #b7d3f6; --track: #262532; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111018; --panel: #1a1923; --ink: #efeef6; --ink-2: #bab9ca; --ink-3: #807f94;
+  --rule: #2c2b39; --grid: #262532; --s1: #3987e5; --s3: #199e70; --hot: #ee7647; --hot-soft: #3a2119;
+  --heat-0: #1c2538; --heat-1: #2a78d6; --heat-2: #b7d3f6; --track: #262532; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--ink);
+  font-family: var(--f-body); font-size: 16px; line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap {
+  max-width: 1040px; margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; letter-spacing: -0.02em; }
+p { margin: 0; }
+.num { font-family: var(--f-data); font-variant-numeric: tabular-nums; }
+a { color: var(--s1); text-underline-offset: 3px; }
+a:focus-visible, button:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--s1); outline-offset: 2px; border-radius: 4px; }
+
+/* ---------- rail ---------- */
+.rail {
+  position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5;
+  background: color-mix(in srgb, var(--bg) 88%, transparent);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--rule);
+}
+.rail .wrap { display: flex; align-items: center; gap: 20px; padding-block: 10px; }
+.rail .brand { font-family: var(--f-display); font-weight: 700; font-size: 15px; white-space: nowrap; }
+.rail nav { display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; min-width: 0; }
+.rail nav::-webkit-scrollbar { display: none; }
+.rail nav a {
+  color: var(--ink-2); text-decoration: none; font-size: 13.5px; padding: 5px 10px; border-radius: 999px; white-space: nowrap;
+}
+.rail nav a:hover { background: var(--track); color: var(--ink); }
+.rail nav a.on { background: var(--ink); color: var(--bg); }
+
+/* ---------- hero ---------- */
+.hero { padding-block: 64px 40px; display: grid; gap: 28px; }
+.eyebrow { font-family: var(--f-data); font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-3); }
+.hero h1 { font-size: clamp(38px, 6.4vw, 76px); line-height: 0.98; font-weight: 800; max-width: 14ch; }
+.hero h1 em { font-style: normal; color: var(--hot); }
+.hero .lede { font-size: 19px; color: var(--ink-2); max-width: 60ch; }
+.hero .lede strong { color: var(--ink); font-weight: 600; }
+
+/* the hero figure: 100 visitors, 76 of them gone */
+.dots { display: grid; grid-template-columns: repeat(25, 1fr); gap: 5px; max-width: 520px; }
+.dots i { aspect-ratio: 1; border-radius: 50%; background: var(--hot); opacity: .9; }
+.dots i.k { background: var(--s1); opacity: 1; }
+.dots i.p { background: var(--ink); }
+.dotkey { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--ink-2); }
+.dotkey span { display: inline-flex; align-items: center; gap: 7px; }
+.dotkey b { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+
+.kpis { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); border-top: 1px solid var(--rule); border-bottom: 1px solid var(--rule); }
+.kpi { padding: 16px 16px 16px 0; display: grid; gap: 2px; }
+.kpi + .kpi { padding-left: 16px; border-left: 1px solid var(--rule); }
+.kpi .v { font-family: var(--f-display); font-size: 28px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.kpi .l { font-size: 13px; color: var(--ink-3); line-height: 1.35; }
+
+/* ---------- chapters ---------- */
+section.ch { padding-block: 56px 8px; scroll-margin-top: 56px; }
+.ch-head { display: grid; gap: 12px; margin-bottom: 24px; max-width: 760px; }
+.ch-num { font-family: var(--f-data); font-size: 12px; color: var(--hot); letter-spacing: 0.06em; text-transform: uppercase; }
+.ch h2 { font-size: clamp(28px, 3.8vw, 40px); line-height: 1.08; font-weight: 700; }
+.ch-head p { color: var(--ink-2); max-width: 65ch; }
+.panel { background: var(--panel); border: 1px solid var(--rule); border-radius: 14px; padding: 24px; min-width: 0; }
+.panel-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 10px 20px; margin-bottom: 18px; }
+.panel-head h3 { font-size: 18px; font-weight: 700; letter-spacing: -0.01em; }
+.panel-head .sub { font-size: 13.5px; color: var(--ink-3); }
+.note { font-size: 14px; color: var(--ink-2); max-width: 70ch; }
+.note b { color: var(--ink); font-weight: 600; }
+.two { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+.stack { display: grid; gap: 20px; }
+
+/* segmented control */
+.seg { display: inline-flex; background: var(--track); border-radius: 999px; padding: 3px; gap: 2px; }
+.seg button {
+  font: 500 13px var(--f-body); color: var(--ink-2); background: transparent; border: 0; border-radius: 999px; padding: 6px 12px; cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--panel); color: var(--ink); box-shadow: 0 1px 2px rgb(0 0 0 / .12); }
+
+/* legend */
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--ink-2); }
+.legend span { display: inline-flex; align-items: center; gap: 7px; }
+.legend i { width: 14px; height: 3px; border-radius: 2px; display: inline-block; }
+
+/* table views */
+details.tv { margin-top: 16px; border-top: 1px solid var(--rule); padding-top: 12px; }
+details.tv summary { cursor: pointer; font-size: 13px; color: var(--ink-3); width: max-content; }
+.tv-scroll { overflow-x: auto; margin-top: 10px; }
+table { border-collapse: collapse; font-size: 13px; width: 100%; }
+th, td { text-align: right; padding: 6px 10px; border-bottom: 1px solid var(--rule); white-space: nowrap; font-variant-numeric: tabular-nums; }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--ink-3); font-weight: 500; }
+td { font-family: var(--f-data); font-size: 12.5px; }
+td:first-child { font-family: var(--f-body); font-size: 13px; }
+
+/* ---------- funnel ---------- */
+.funnel { display: grid; gap: 0; }
+.f-row { display: grid; grid-template-columns: 128px minmax(0, 1fr) 150px; gap: 16px; align-items: center; padding-block: 6px; border-radius: 8px; cursor: default; }
+.f-row:hover .f-bar { filter: brightness(1.08); }
+.f-label { font-weight: 600; font-size: 15px; }
+.f-label small { display: block; font-weight: 400; font-size: 12.5px; color: var(--ink-3); line-height: 1.3; }
+.f-track { height: 34px; position: relative; }
+.f-bar { height: 100%; background: var(--s1); border-radius: 0 4px 4px 0; min-width: 3px; transition: width .7s cubic-bezier(.2,.7,.2,1); }
+.f-val { font-family: var(--f-data); font-size: 14px; font-variant-numeric: tabular-nums; }
+.f-val small { display: block; color: var(--ink-3); font-size: 12px; }
+.f-drop { display: grid; grid-template-columns: 128px minmax(0, 1fr) 150px; gap: 16px; font-size: 12.5px; color: var(--ink-3); padding-block: 1px; }
+.f-drop span { grid-column: 2; display: flex; align-items: center; gap: 8px; }
+.f-drop span::before { content: ""; width: 1px; height: 14px; background: var(--rule); }
+.f-drop.leak span { color: var(--hot); font-weight: 600; }
+.f-drop.leak span::before { background: var(--hot); width: 2px; }
+
+/* ---------- line chart / svg ---------- */
+.chart { position: relative; width: 100%; }
+.chart svg { display: block; width: 100%; height: auto; overflow: visible; }
+.chart text { font-family: var(--f-body); }
+.axis-t { fill: var(--ink-3); font-size: 11.5px; }
+.tip {
+  position: fixed; z-index: 20; pointer-events: none; background: var(--ink); color: var(--bg);
+  padding: 9px 12px; border-radius: 8px; font-size: 12.5px; line-height: 1.45; max-width: 260px;
+  box-shadow: 0 6px 20px rgb(0 0 0 / .2); opacity: 0; transition: opacity .12s;
+}
+.tip.on { opacity: 1; }
+.tip b { font-weight: 600; }
+.tip .r { display: flex; justify-content: space-between; gap: 14px; }
+.tip .r span:last-child { font-family: var(--f-data); }
+.tip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+
+/* ---------- heatmap ---------- */
+.heat { display: grid; grid-template-columns: minmax(96px, auto) repeat(5, minmax(0, 1fr)); gap: 3px; }
+.heat .hh { font-size: 12px; color: var(--ink-3); text-align: center; padding-bottom: 4px; font-family: var(--f-data); }
+.heat .rl { font-size: 13.5px; font-weight: 600; display: flex; flex-direction: column; justify-content: center; padding-right: 10px; line-height: 1.25; }
+.heat .rl small { font-weight: 400; color: var(--ink-3); font-size: 11.5px; font-family: var(--f-data); }
+.heat .c {
+  height: 52px; border-radius: 4px; display: grid; place-items: center; font-family: var(--f-data); font-size: 13px; font-variant-numeric: tabular-nums;
+  transition: background-color .4s, color .4s; cursor: default;
+}
+.heat .c.m0 { background: var(--track); color: var(--ink-3); }
+.heat .c.na { background: repeating-linear-gradient(135deg, transparent 0 5px, var(--grid) 5px 6px); color: transparent; }
+.heat .c:not(.na):hover { outline: 2px solid var(--ink); outline-offset: 1px; }
+.heat .rl.cen { color: var(--ink-3); }
+.scale { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--ink-3); margin-top: 14px; font-family: var(--f-data); }
+.scale .bar { flex: 0 1 220px; height: 8px; border-radius: 4px; background: linear-gradient(90deg, var(--heat-0), var(--heat-1), var(--heat-2)); }
+
+/* ---------- stat ---------- */
+.stat { display: grid; gap: 4px; padding: 20px 0; border-top: 1px solid var(--rule); }
+.stat:first-child { border-top: 0; padding-top: 0; }
+.stat .v { font-family: var(--f-display); font-size: 44px; font-weight: 700; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.stat .v.hot { color: var(--hot); }
+.stat p { font-size: 14px; color: var(--ink-2); }
+
+/* ---------- simulator ---------- */
+.sim { display: grid; grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr); gap: 0; padding: 0; overflow: hidden; }
+.sim-in { padding: 24px; display: grid; gap: 26px; align-content: start; border-right: 1px solid var(--rule); }
+.sim-out { padding: 24px; display: grid; gap: 22px; align-content: start; }
+.ctl { display: grid; gap: 10px; }
+.ctl-top { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.ctl label { font-weight: 600; font-size: 14.5px; }
+.ctl .val { font-family: var(--f-data); font-size: 20px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.ctl .help { font-size: 13px; color: var(--ink-3); line-height: 1.45; }
+input[type=range] { -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; cursor: pointer; margin: 0; }
+input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ink) var(--p, 50%), var(--track) var(--p, 50%)); }
+input[type=range]::-moz-range-track { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--ink) var(--p, 50%), var(--track) var(--p, 50%)); }
+input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%; background: var(--panel); border: 2px solid var(--ink); margin-top: -8px; box-shadow: 0 1px 4px rgb(0 0 0 / .2); }
+input[type=range]::-moz-range-thumb { width: 18px; height: 18px; border-radius: 50%; background: var(--panel); border: 2px solid var(--ink); }
+.ticks { position: relative; height: 34px; font-size: 11.5px; color: var(--ink-3); margin-top: -4px; }
+.ticks button {
+  position: absolute; transform: translateX(-50%); border: 0; background: none; color: var(--ink-3); font: inherit; cursor: pointer;
+  display: grid; justify-items: center; gap: 1px; padding: 0 2px; white-space: nowrap; line-height: 1.25;
+}
+.ticks button::before { content: ""; width: 1px; height: 6px; background: var(--ink-3); }
+.ticks button:hover { color: var(--ink); }
+.ticks button.be { color: var(--hot); }
+.ticks button.be::before { background: var(--hot); }
+.big { display: grid; gap: 4px; }
+.big .v { font-family: var(--f-display); font-weight: 800; font-size: clamp(44px, 6vw, 64px); line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+.big .l { font-size: 14px; color: var(--ink-2); }
+.minis { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.mini { display: grid; gap: 2px; }
+.mini .v { font-family: var(--f-data); font-size: 18px; font-weight: 500; font-variant-numeric: tabular-nums; }
+.mini .l { font-size: 12.5px; color: var(--ink-3); line-height: 1.35; }
+.cmp { display: grid; gap: 10px; }
+.cmp-row { display: grid; grid-template-columns: 118px minmax(0, 1fr); gap: 12px; align-items: center; }
+.cmp-row .n { font-size: 13px; font-weight: 600; line-height: 1.25; }
+.cmp-row .n small { display: block; font-weight: 400; color: var(--ink-3); }
+.cmp-track { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.cmp-bar { height: 26px; border-radius: 0 4px 4px 0; background: var(--ink-3); transition: width .35s ease, background-color .3s; min-width: 2px; }
+.cmp-bar.win { background: var(--hot); }
+.cmp-track span { font-family: var(--f-data); font-size: 13px; white-space: nowrap; }
+.verdict { font-size: 14.5px; padding: 12px 14px; border-radius: 10px; background: var(--hot-soft); color: var(--ink); }
+.verdict b { font-weight: 600; }
+
+/* ---------- depth ---------- */
+.depth { display: grid; gap: 8px; }
+.d-row { display: grid; grid-template-columns: 70px minmax(0, 1fr) 60px; gap: 12px; align-items: center; cursor: default; }
+.d-row .n { font-family: var(--f-data); font-size: 13px; color: var(--ink-2); }
+.d-track { height: 28px; background: var(--track); border-radius: 4px; position: relative; overflow: hidden; }
+.d-fill { position: absolute; inset: 0 auto 0 0; background: var(--s1); border-radius: 0 4px 4px 0; }
+.d-row.first .d-fill { background: var(--hot); }
+.d-row .p { font-family: var(--f-data); font-size: 13.5px; text-align: right; }
+.d-row .share { position: absolute; left: 8px; top: 50%; transform: translateY(-50%); font-size: 11.5px; color: #fff; font-family: var(--f-data); white-space: nowrap; }
+.d-row:hover .d-track { outline: 2px solid var(--ink); outline-offset: 1px; }
+
+.split { display: flex; height: 40px; gap: 2px; border-radius: 6px; overflow: hidden; margin-block: 6px 12px; }
+.split div { display: flex; align-items: center; padding-inline: 10px; font-family: var(--f-data); font-size: 12.5px; color: #fff; white-space: nowrap; overflow: hidden; cursor: default; }
+.split .a { background: var(--ink-3); }
+.split .b { background: var(--hot); }
+.split .c2 { background: var(--track); color: var(--ink-2); }
+.splitkey { display: grid; gap: 8px; font-size: 13.5px; color: var(--ink-2); }
+.splitkey div { display: grid; grid-template-columns: 12px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.splitkey b { width: 12px; height: 12px; border-radius: 3px; display: inline-block; transform: translateY(1px); }
+
+/* ---------- plays ---------- */
+.plays { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.play { display: grid; gap: 10px; align-content: start; padding-top: 16px; border-top: 2px solid var(--ink); }
+.play .k { font-family: var(--f-data); font-size: 12px; color: var(--ink-3); }
+.play h3 { font-size: 20px; line-height: 1.2; font-weight: 700; }
+.play p { font-size: 14.5px; color: var(--ink-2); }
+.play .m { font-size: 13px; font-family: var(--f-data); color: var(--ink); background: var(--track); padding: 8px 10px; border-radius: 6px; }
+
+footer { margin-top: 72px; border-top: 1px solid var(--rule); padding-block: 32px 56px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 32px; font-size: 14px; color: var(--ink-2); }
+footer h3 { font-size: 15px; margin-bottom: 8px; color: var(--ink); }
+footer ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+
+@media (max-width: 860px) {
+  .two, .sim, footer { grid-template-columns: minmax(0, 1fr); }
+  .sim-in { border-right: 0; border-bottom: 1px solid var(--rule); }
+  .plays { grid-template-columns: minmax(0, 1fr); }
+  .kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .kpi, .kpi + .kpi { padding: 14px 12px 14px 0; border-left: 0; border-top: 1px solid var(--rule); }
+  .kpi:nth-child(even) { padding-left: 14px; border-left: 1px solid var(--rule); }
+  .kpi:nth-child(-n+2) { border-top: 0; }
+  .kpi:last-child { grid-column: 1 / -1; }
+}
+@media (max-width: 560px) {
+  .rail .brand { display: none; }
+  .panel { padding: 18px 16px; }
+  .sim-in, .sim-out { padding: 18px 16px; }
+  .f-row, .f-drop { grid-template-columns: 92px minmax(0, 1fr) 96px; gap: 10px; }
+  .f-label small { display: none; }
+  .f-val small { font-size: 11px; }
+  .heat { grid-template-columns: 72px repeat(5, minmax(0, 1fr)); gap: 2px; }
+  .heat .c { font-size: 11px; height: 44px; }
+  .heat .rl { font-size: 12px; padding-right: 4px; }
+  .minis { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .dots { gap: 3px; }
+  .hero { padding-block: 40px 28px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition: none !important; animation: none !important; }
+  html { scroll-behavior: auto; }
+}
+html { scroll-behavior: smooth; }
+</style>
+</head>
+<body>
+
+<div class="rail">
+  <div class="wrap">
+    <div class="brand">The Add-to-Cart Leak</div>
+    <nav aria-label="Chapters">
+      <a href="#funnel">Funnel</a>
+      <a href="#monthly">Monthly</a>
+      <a href="#cohorts">Cohorts</a>
+      <a href="#opportunity">Opportunity</a>
+      <a href="#diagnosis">Diagnosis</a>
+      <a href="#plays">What to do</a>
+    </nav>
+  </div>
+</div>
+
+<main class="wrap">
+  <header class="hero">
+    <div class="eyebrow">REES46 cosmetics store · 1 Oct 2019 – 29 Feb 2020 · 20.7M events</div>
+    <h1>Three in four visitors <em>never add to cart.</em></h1>
+    <p class="lede">A funnel and cohort analysis of 1.64M shoppers. <strong>75.7% leave without carting anything</strong>, the biggest drop in the funnel. A 5-point lift in visit→cart is worth about <strong>5,289 more buyers and $216K a month</strong> at current traffic.</p>
+    <div style="display:grid;gap:12px">
+      <div class="dots" id="dots" role="img" aria-label="Out of 100 visitors: 76 never add to cart, 17 add to cart but do not buy, 7 buy."></div>
+      <div class="dotkey">
+        <span><b style="background:var(--hot)"></b>76 of 100 never add to cart</span>
+        <span><b style="background:var(--s1)"></b>17 cart but don't buy</span>
+        <span><b style="background:var(--ink)"></b>7 buy</span>
+      </div>
+    </div>
+    <div class="kpis">
+      <div class="kpi"><span class="v">1.64M</span><span class="l">unique visitors</span></div>
+      <div class="kpi"><span class="v">24.3%</span><span class="l">add anything to cart</span></div>
+      <div class="kpi"><span class="v">6.7%</span><span class="l">of visitors purchase</span></div>
+      <div class="kpi"><span class="v">9.1%</span><span class="l">buy again the next month (Nov–Jan cohorts)</span></div>
+      <div class="kpi"><span class="v">$40.79</span><span class="l">average order value</span></div>
+    </div>
+  </header>
+
+  <!-- 1. Funnel -->
+  <section class="ch" id="funnel">
+    <div class="ch-head">
+      <span class="ch-num">§3 · Funnel</span>
+      <h2>The leak is at the top, not at checkout</h2>
+      <p>Four user-level stages over the five months. Each stage is a subset of the one above, so drop-offs add up. Acquisition→Activation loses 1,241,050 people, 77% of everyone lost anywhere in the funnel.</p>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Users reaching each stage</h3>
+        <div class="seg" role="group" aria-label="Bar scale">
+          <button type="button" id="fs-lin" aria-pressed="true">Linear</button>
+          <button type="button" id="fs-log" aria-pressed="false">Log scale</button>
+        </div>
+      </div>
+      <div class="funnel" id="funnelChart"></div>
+      <details class="tv"><summary>Show as table</summary><div class="tv-scroll"><table>
+        <thead><tr><th>Stage</th><th>Users</th><th>% of prior</th><th>% of visitors</th><th>Lost</th></tr></thead>
+        <tbody>
+          <tr><td>Acquisition</td><td>1,639,358</td><td>—</td><td>100.0%</td><td>—</td></tr>
+          <tr><td>Activation</td><td>398,308</td><td>24.3%</td><td>24.3%</td><td>1,241,050</td></tr>
+          <tr><td>Conversion</td><td>109,607</td><td>27.5%</td><td>6.7%</td><td>288,701</td></tr>
+          <tr><td>Retention</td><td>17,679</td><td>16.1%</td><td>1.1%</td><td>91,928</td></tr>
+        </tbody></table></div></details>
+    </div>
+  </section>
+
+  <!-- 2. Monthly -->
+  <section class="ch" id="monthly">
+    <div class="ch-head">
+      <span class="ch-num">§3.2 · Monthly funnel</span>
+      <h2>October's cart spike didn't turn into purchases</h2>
+      <p>October's visit→cart rate ran 10 points above every later month, and its cart→purchase rate ran 10 points below. End-to-end visit→purchase stayed between 6.4% and 8.4% the whole time. A higher cart rate does not automatically carry through to buyers.</p>
+    </div>
+    <div class="panel">
+      <div class="panel-head">
+        <h3>Conversion rate within each month</h3>
+        <div class="legend">
+          <span><i style="background:var(--s1)"></i>Visit → cart</span>
+          <span><i style="background:var(--s3)"></i>Cart → purchase</span>
+          <span><i style="background:var(--ink)"></i>Visit → purchase</span>
+        </div>
+      </div>
+      <div class="chart" id="lineChart"></div>
+      <details class="tv"><summary>Show as table</summary><div class="tv-scroll"><table>
+        <thead><tr><th>Month</th><th>Active users</th><th>Added to cart</th><th>Purchased</th><th>Visit→cart</th><th>Cart→purchase</th><th>Visit→purchase</th></tr></thead>
+        <tbody id="monthlyTable"></tbody></table></div></details>
+    </div>
+  </section>
+
+  <!-- 3. Cohorts -->
+  <section class="ch" id="cohorts">
+    <div class="ch-head">
+      <span class="ch-num">§4–5 · Cohorts &amp; LTV</span>
+      <h2>Fewer than one in ten buyers come back the next month</h2>
+      <p>Customers grouped by the month of their first purchase. The log starts on 1 October, so the October cohort includes long-standing customers and reads high. November to January is the clean signal.</p>
+    </div>
+    <div class="two">
+      <div class="panel">
+        <div class="panel-head">
+          <h3 id="heatTitle">Repeat-purchase rate by cohort</h3>
+          <div class="seg" role="group" aria-label="Cohort metric">
+            <button type="button" id="hm-ret" aria-pressed="true">Retention</button>
+            <button type="button" id="hm-ltv" aria-pressed="false">Revenue / customer</button>
+          </div>
+        </div>
+        <div class="heat" id="heat"></div>
+        <div class="scale"><span id="scLo">0%</span><span class="bar"></span><span id="scHi">18.5%</span><span style="margin-left:auto" id="scNote">M0 = 100% by definition</span></div>
+      </div>
+      <div class="panel">
+        <div class="stat"><span class="v num">9.1%</span><p>Month-1 repeat rate, customer-weighted across the Nov–Jan cohorts. October's 18.5% is inflated by customers who were already loyal before the log began.</p></div>
+        <div class="stat"><span class="v num">$49.86 → $47.15</span><p>Two-month revenue per customer, November vs January cohort. After October, each new cohort is worth about the same or slightly less.</p></div>
+        <div class="stat"><span class="v num">16.1%</span><p>of purchasers bought in two or more different months over the five-month window.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4. Opportunity -->
+  <section class="ch" id="opportunity">
+    <div class="ch-head">
+      <span class="ch-num">§6 · Opportunity sizing</span>
+      <h2>What is a better add-to-cart rate actually worth?</h2>
+      <p>The notebook sizes a +5pp lift at both stages using the five-month averages: 387,836 visitors and 99,027 carters a month, $40.79 per order, one order per new buyer. The open question is how well the <em>extra</em> carters convert. Move the sliders to test it.</p>
+    </div>
+    <div class="panel sim">
+      <div class="sim-in">
+        <div class="ctl">
+          <div class="ctl-top"><label for="lift">Lift in conversion rate</label><span class="val" id="liftV">+5.0pp</span></div>
+          <input type="range" id="lift" min="0.5" max="10" step="0.5" value="5">
+          <div class="help">Applied to visit→cart (25.5% today) and, for comparison, to cart→purchase (27.3% today).</div>
+        </div>
+        <div class="ctl">
+          <div class="ctl-top"><label for="mr">New carters then buy at</label><span class="val" id="mrV">27.3%</span></div>
+          <input type="range" id="mr" min="10" max="40" step="0.1" value="27.3">
+          <div class="ticks" id="mrTicks"></div>
+          <div class="help">Today's average is 27.3%. In October, the month with the most carting, carters converted at only 19.0%.</div>
+        </div>
+      </div>
+      <div class="sim-out">
+        <div class="big">
+          <span class="v" id="oRev">$215,772</span>
+          <span class="l">extra revenue per month from lifting visit→cart</span>
+        </div>
+        <div class="minis">
+          <div class="mini"><span class="v" id="oBuy">5,289</span><span class="l">extra buyers / month</span></div>
+          <div class="mini"><span class="v" id="oYr">$2.59M</span><span class="l">extra revenue / year</span></div>
+          <div class="mini"><span class="v" id="oPct">+17.0%</span><span class="l">vs $1.27M monthly baseline</span></div>
+        </div>
+        <div class="cmp">
+          <div class="cmp-row"><span class="n">Visit → cart<small>activation</small></span><div class="cmp-track"><div class="cmp-bar" id="bA"></div><span id="tA"></span></div></div>
+          <div class="cmp-row"><span class="n">Cart → purchase<small>checkout</small></span><div class="cmp-track"><div class="cmp-bar" id="bC"></div><span id="tC"></span></div></div>
+        </div>
+        <p class="verdict" id="verdict"></p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Diagnosis -->
+  <section class="ch" id="diagnosis">
+    <div class="ch-head">
+      <span class="ch-num">§7 · Diagnosis</span>
+      <h2>It's a one-product problem, and the first session decides</h2>
+      <p>63% of visitors view exactly one product, and they add to cart only 10.9% of the time. Browsing depth is the strongest correlate of activation in the data.</p>
+    </div>
+    <div class="two">
+      <div class="panel">
+        <div class="panel-head"><h3>Add-to-cart rate by products viewed</h3><span class="sub">labels inside bars = share of visitors</span></div>
+        <div class="depth" id="depth"></div>
+        <details class="tv"><summary>Show as table</summary><div class="tv-scroll"><table>
+          <thead><tr><th>Products viewed</th><th>Users</th><th>Share of users</th><th>Add-to-cart rate</th></tr></thead>
+          <tbody id="depthTable"></tbody></table></div></details>
+      </div>
+      <div class="stack">
+        <div class="panel">
+          <div class="panel-head"><h3>Who the 1.24M non-carters are</h3></div>
+          <div class="split" id="split"></div>
+          <div class="splitkey">
+            <div><b style="background:var(--ink-3)"></b><span><span class="num">757,628</span> bounced after one view or less</span></div>
+            <div><b style="background:var(--hot)"></b><span><span class="num">126,129</span> viewed 3+ products in 2+ sessions and still never carted. Known users who showed intent twice.</span></div>
+            <div><b style="background:var(--track)"></b><span><span class="num">357,293</span> everyone else</span></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="stat"><span class="v num hot">76.5%</span><p>of people who ever add to cart do it in their very first session. Someone who leaves session one empty-handed rarely comes back to cart.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 6. Plays -->
+  <section class="ch" id="plays">
+    <div class="ch-head">
+      <span class="ch-num">§7.1 · Recommendations</span>
+      <h2>Three moves, judged on purchases</h2>
+    </div>
+    <div class="plays">
+      <article class="play">
+        <span class="k">Play 1 · product pages</span>
+        <h3>Turn one-product visits into multi-product visits</h3>
+        <p>Add "pairs well with" and "complete the routine" modules plus quick-add buttons on product pages and listings. A/B test on landing product pages, since depth may be a symptom of intent rather than its cause.</p>
+        <span class="m">Target: 1-product band 10.9% → 2-product band 18.3%</span>
+      </article>
+      <article class="play">
+        <span class="k">Play 2 · lifecycle</span>
+        <h3>Re-engage the 126K high-intent browsers</h3>
+        <p>Within 24 hours of a second session with 3+ product views and no cart, send an email or push featuring what they looked at. Keep a holdout group to measure true incrementality.</p>
+        <span class="m">Pool: 126,129 known users, 10.2% of non-carters</span>
+      </article>
+      <article class="play">
+        <span class="k">Play 3 · measurement</span>
+        <h3>Score every test on visit→purchase</h3>
+        <p>Pre-register visit→purchase as the primary metric and treat cart rate as a diagnostic. An activation win only beats an equal checkout win if new carters buy at 25.5% or better. October's carters bought at 19.0%.</p>
+        <span class="m">Baseline: 6.4–8.4% visit→purchase by month</span>
+      </article>
+    </div>
+  </section>
+
+  <footer>
+    <div>
+      <h3>Method</h3>
+      <ul>
+        <li>1,109,098 exact duplicate rows removed, leaving 19,583,742 events.</li>
+        <li>No order ID exists, so an order is all purchase rows in one session. 155,617 orders, $6.35M revenue.</li>
+        <li>911 purchasers with no cart event are excluded from Conversion by the subset rule.</li>
+        <li>Five months of data: the October cohort is visible to M4, February only to M0. Hatched cells can't be observed.</li>
+        <li>Opportunity counts one order per new buyer, a deliberately conservative choice.</li>
+      </ul>
+    </div>
+    <div>
+      <h3>Source</h3>
+      <p>Built from the notebook and charts in <a href="https://github.com/anshikajain2006/growth-funnel-analytics-">anshikajain2006/growth-funnel-analytics-</a>. Every number on this page is printed by a cell there (§8 collects them).</p>
+      <p style="margin-top:10px">Data: <a href="https://www.kaggle.com/datasets/mkechinov/ecommerce-events-history-in-cosmetics-shop">eCommerce Events History in Cosmetics Shop</a> (REES46, Kaggle).</p>
+    </div>
+  </footer>
+</main>
+
+<div class="tip" id="tip" role="tooltip"></div>
+
+<script>
+(() => {
+  // ---------- data (from funnel_cohort_analysis.ipynb outputs) ----------
+  const FUNNEL = [
+    { stage: "Acquisition", def: "any event", users: 1639358 },
+    { stage: "Activation", def: "added to cart", users: 398308 },
+    { stage: "Conversion", def: "purchased", users: 109607 },
+    { stage: "Retention", def: "bought in 2+ months", users: 17679 },
+  ];
+  const MONTHS = [
+    { m: "Oct 2019", s: "Oct", acq: 399664, act: 133818, conv: 25423 },
+    { m: "Nov 2019", s: "Nov", acq: 368232, act: 95939, conv: 31103 },
+    { m: "Dec 2019", s: "Dec", acq: 370154, act: 83458, conv: 25290 },
+    { m: "Jan 2020", s: "Jan", acq: 410073, act: 92653, conv: 27873 },
+    { m: "Feb 2020", s: "Feb", acq: 391055, act: 89269, conv: 25364 },
+  ].map(d => ({ ...d, v2c: d.act / d.acq, c2p: d.conv / d.act, v2p: d.conv / d.acq }));
+  const COHORTS = [
+    { c: "Oct 2019", n: 25762, ret: [1, .185, .128, .132, .104], ltv: [47.00, 59.52, 66.73, 75.33, 82.37] },
+    { c: "Nov 2019", n: 26761, ret: [1, .098, .101, .079], ltv: [45.15, 49.86, 55.55, 59.97] },
+    { c: "Dec 2019", n: 19702, ret: [1, .085, .065], ltv: [38.87, 43.04, 46.15] },
+    { c: "Jan 2020", n: 20427, ret: [1, .089], ltv: [42.40, 47.15] },
+    { c: "Feb 2020", n: 17866, ret: [1], ltv: [41.91] },
+  ];
+  const DEPTH = [
+    { b: "1", users: 1006455, rate: .109, share: .630 },
+    { b: "2", users: 212588, rate: .183, share: .133 },
+    { b: "3–4", users: 147877, rate: .329, share: .093 },
+    { b: "5–9", users: 110689, rate: .543, share: .069 },
+    { b: "10+", users: 120145, rate: .837, share: .075 },
+  ];
+  // Five-month averages used for sizing
+  const sum = k => MONTHS.reduce((a, d) => a + d[k], 0);
+  const ACQ = sum("acq") / 5, ACT = sum("act") / 5;
+  const C2P = sum("conv") / sum("act");          // 27.3%
+  const BREAK_EVEN = sum("act") / sum("acq");    // 25.5%
+  const AOV = 6348268 / 155617;                  // $40.79
+  const BASELINE = 1269654;
+
+  const $ = id => document.getElementById(id);
+  const fmt = n => Math.round(n).toLocaleString("en-US");
+  const pct = (v, d = 1) => (v * 100).toFixed(d) + "%";
+  const money = n => "$" + fmt(n);
+  const moneyShort = n => n >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" : "$" + Math.round(n / 1e3) + "K";
+
+  // ---------- tooltip ----------
+  const tip = $("tip");
+  function showTip(html, e) {
+    tip.innerHTML = html; tip.classList.add("on");
+    const pad = 14, r = tip.getBoundingClientRect();
+    let x = e.clientX + pad, y = e.clientY + pad;
+    if (x + r.width > innerWidth - 8) x = e.clientX - r.width - pad;
+    if (y + r.height > innerHeight - 8) y = e.clientY - r.height - pad;
+    tip.style.left = Math.max(8, x) + "px"; tip.style.top = Math.max(8, y) + "px";
+  }
+  const hideTip = () => tip.classList.remove("on");
+  function hover(el, fn) {
+    el.addEventListener("pointermove", e => showTip(fn(e), e));
+    el.addEventListener("pointerleave", hideTip);
+  }
+
+  // ---------- hero dots ----------
+  const dots = $("dots");
+  for (let i = 0; i < 100; i++) {
+    const d = document.createElement("i");
+    if (i >= 76) d.className = i >= 93 ? "p" : "k";
+    dots.appendChild(d);
+  }
+
+  // ---------- funnel ----------
+  let funnelLog = false;
+  function renderFunnel() {
+    const el = $("funnelChart"), max = FUNNEL[0].users;
+    const drops = FUNNEL.slice(1).map((d, i) => FUNNEL[i].users - d.users);
+    const maxDrop = Math.max(...drops);
+    const w = u => funnelLog ? (Math.log10(u) - 4) / (Math.log10(max) - 4) : u / max;
+    if (!el.childElementCount) {
+      el.innerHTML = FUNNEL.map((d, i) => {
+        const drop = i ? `<div class="f-drop${drops[i - 1] === maxDrop ? " leak" : ""}"><span>−${fmt(drops[i - 1])} lost (${pct(drops[i - 1] / FUNNEL[i - 1].users)})${drops[i - 1] === maxDrop ? " · largest drop-off" : ""}</span></div>` : "";
+        return drop + `<div class="f-row" data-i="${i}">
+          <div class="f-label">${d.stage}<small>${d.def}</small></div>
+          <div class="f-track"><div class="f-bar" style="width:0"></div></div>
+          <div class="f-val">${fmt(d.users)}<small>${i ? pct(d.users / FUNNEL[i - 1].users) + " of prior" : "100%"}</small></div>
+        </div>`;
+      }).join("");
+      el.querySelectorAll(".f-row").forEach(row => {
+        const i = +row.dataset.i, d = FUNNEL[i];
+        hover(row, () => `<b>${d.stage}</b> · ${d.def}<div class="r"><span>Users</span><span>${fmt(d.users)}</span></div>
+          <div class="r"><span>% of visitors</span><span>${pct(d.users / max)}</span></div>
+          ${i ? `<div class="r"><span>% of prior stage</span><span>${pct(d.users / FUNNEL[i - 1].users)}</span></div>` : ""}`);
+      });
+    }
+    requestAnimationFrame(() => el.querySelectorAll(".f-bar").forEach((b, i) => b.style.width = (w(FUNNEL[i].users) * 100) + "%"));
+  }
+  function setPressed(on, off) { on.setAttribute("aria-pressed", "true"); off.setAttribute("aria-pressed", "false"); }
+  $("fs-lin").onclick = () => { funnelLog = false; setPressed($("fs-lin"), $("fs-log")); renderFunnel(); };
+  $("fs-log").onclick = () => { funnelLog = true; setPressed($("fs-log"), $("fs-lin")); renderFunnel(); };
+
+  // ---------- monthly line chart ----------
+  const SERIES = [
+    { k: "v2c", name: "Visit → cart", color: "var(--s1)" },
+    { k: "c2p", name: "Cart → purchase", color: "var(--s3)" },
+    { k: "v2p", name: "Visit → purchase", color: "var(--ink)" },
+  ];
+  $("monthlyTable").innerHTML = MONTHS.map(d => `<tr><td>${d.m}</td><td>${fmt(d.acq)}</td><td>${fmt(d.act)}</td><td>${fmt(d.conv)}</td><td>${pct(d.v2c)}</td><td>${pct(d.c2p)}</td><td>${pct(d.v2p)}</td></tr>`).join("")
+    + `<tr><td><b>Average</b></td><td>${fmt(ACQ)}</td><td>${fmt(ACT)}</td><td>${fmt(sum("conv") / 5)}</td><td>${pct(BREAK_EVEN)}</td><td>${pct(C2P)}</td><td>${pct(sum("conv") / sum("acq"))}</td></tr>`;
+
+  function renderLine() {
+    const el = $("lineChart");
+    const W = Math.max(300, el.clientWidth), narrow = W < 560;
+    const H = narrow ? 260 : 300;
+    const m = { l: 40, r: narrow ? 14 : 128, t: 26, b: 30 };
+    const iw = W - m.l - m.r, ih = H - m.t - m.b;
+    const x = i => m.l + (iw * i) / (MONTHS.length - 1);
+    const y = v => m.t + ih - (v / 0.4) * ih;
+    const band = iw / (MONTHS.length - 1);
+    let s = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Monthly conversion rates: visit to cart falls from 33.5% in October to about 23%; cart to purchase rises from 19.0% to about 30%; visit to purchase stays between 6.4% and 8.4%.">`;
+    // October band
+    s += `<rect x="${m.l - Math.min(band / 2, m.l - 4)}" y="${m.t - 18}" width="${Math.min(band / 2, m.l - 4) + band / 2}" height="${ih + 18}" style="fill:var(--hot-soft)" rx="6"/>`;
+    s += `<text x="${x(0) + 6}" y="${m.t - 6}" style="fill:var(--hot);font-size:11.5px;font-weight:600">October outlier</text>`;
+    for (let v = 0; v <= 0.4001; v += 0.1) {
+      s += `<line x1="${m.l}" x2="${W - m.r}" y1="${y(v)}" y2="${y(v)}" style="stroke:var(--grid)" stroke-width="1"/>`;
+      s += `<text class="axis-t" x="${m.l - 8}" y="${y(v) + 4}" text-anchor="end">${Math.round(v * 100)}%</text>`;
+    }
+    MONTHS.forEach((d, i) => s += `<text class="axis-t" x="${x(i)}" y="${H - 8}" text-anchor="middle">${narrow ? d.s : d.m}</text>`);
+    SERIES.forEach(se => {
+      s += `<polyline fill="none" style="stroke:${se.color}" stroke-width="2" stroke-linejoin="round" points="${MONTHS.map((d, i) => x(i) + "," + y(d[se.k])).join(" ")}"/>`;
+      MONTHS.forEach((d, i) => s += `<circle cx="${x(i)}" cy="${y(d[se.k])}" r="4.5" style="fill:${se.color};stroke:var(--panel)" stroke-width="2"/>`);
+      if (!narrow) {
+        const last = MONTHS[MONTHS.length - 1][se.k];
+        s += `<text x="${x(4) + 12}" y="${y(last) + 4}" style="fill:var(--ink-2);font-size:12px">${se.name} <tspan style="fill:var(--ink-3)">${pct(last, 0)}</tspan></text>`;
+      }
+    });
+    // October value labels (the point of the chart)
+    s += `<text x="${x(0) + 10}" y="${y(MONTHS[0].v2c) - 8}" style="fill:var(--ink);font-size:12px;font-weight:600">${pct(MONTHS[0].v2c)}</text>`;
+    s += `<text x="${x(0) + 10}" y="${y(MONTHS[0].c2p) + 16}" style="fill:var(--ink);font-size:12px;font-weight:600">${pct(MONTHS[0].c2p)}</text>`;
+    s += `<line id="xh" x1="0" x2="0" y1="${m.t}" y2="${m.t + ih}" style="stroke:var(--ink-3)" stroke-dasharray="3 3" opacity="0"/>`;
+    s += `<rect id="hit" x="${m.l - band / 2}" y="0" width="${iw + band}" height="${H}" fill="transparent"/>`;
+    s += `</svg>`;
+    el.innerHTML = s;
+    const svg = el.querySelector("svg"), xh = el.querySelector("#xh"), hit = el.querySelector("#hit");
+    hit.addEventListener("pointermove", e => {
+      const r = svg.getBoundingClientRect();
+      const px = (e.clientX - r.left) * (W / r.width);
+      const i = Math.max(0, Math.min(4, Math.round((px - m.l) / band)));
+      xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("opacity", "1");
+      const d = MONTHS[i];
+      showTip(`<b>${d.m}</b>` + SERIES.map(se => `<div class="r"><span><i style="background:${se.color}"></i>${se.name}</span><span>${pct(d[se.k])}</span></div>`).join("")
+        + `<div class="r" style="opacity:.75"><span>Active users</span><span>${fmt(d.acq)}</span></div>`, e);
+    });
+    hit.addEventListener("pointerleave", () => { xh.setAttribute("opacity", "0"); hideTip(); });
+  }
+
+  // ---------- heatmap ----------
+  let heatMode = "ret";
+  function hexToRgb(h) { h = h.trim().replace("#", ""); return [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16)); }
+  function ramp(t) {
+    const cs = getComputedStyle(document.documentElement);
+    const stops = ["--heat-0", "--heat-1", "--heat-2"].map(k => hexToRgb(cs.getPropertyValue(k)));
+    const seg = t <= 0.5 ? 0 : 1, lt = t <= 0.5 ? t * 2 : (t - 0.5) * 2;
+    const c = stops[seg].map((v, i) => Math.round(v + (stops[seg + 1][i] - v) * lt));
+    const lum = (0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2]) / 255;
+    return { bg: `rgb(${c.join(",")})`, fg: lum > 0.55 ? "#101018" : "#ffffff" };
+  }
+  function renderHeat() {
+    const el = $("heat"), ret = heatMode === "ret";
+    const vals = COHORTS.flatMap(c => ret ? c.ret.slice(1) : c.ltv);
+    const lo = ret ? 0 : Math.min(...vals), hi = Math.max(...vals);
+    let h = `<div></div>` + [0, 1, 2, 3, 4].map(k => `<div class="hh">M${k}</div>`).join("");
+    COHORTS.forEach((c, ri) => {
+      h += `<div class="rl${ri === 0 ? " cen" : ""}">${c.c.replace(" 20", " ’")}<small>n=${fmt(c.n)}</small></div>`;
+      for (let k = 0; k < 5; k++) {
+        const v = ret ? c.ret[k] : c.ltv[k];
+        if (v == null) { h += `<div class="c na" aria-hidden="true"></div>`; continue; }
+        if (ret && k === 0) { h += `<div class="c m0" data-r="${ri}" data-k="${k}">100%</div>`; continue; }
+        const { bg, fg } = ramp((v - lo) / (hi - lo));
+        h += `<div class="c" data-r="${ri}" data-k="${k}" style="background:${bg};color:${fg}">${ret ? pct(v) : "$" + v.toFixed(2)}</div>`;
+      }
+    });
+    el.innerHTML = h;
+    $("heatTitle").textContent = ret ? "Repeat-purchase rate by cohort" : "Cumulative revenue per customer";
+    $("scLo").textContent = ret ? "0%" : "$" + lo.toFixed(2);
+    $("scHi").textContent = ret ? pct(hi) : "$" + hi.toFixed(2);
+    $("scNote").textContent = ret ? "M0 = 100% by definition" : "same age, fair comparison";
+    el.querySelectorAll(".c[data-r]").forEach(cell => {
+      const c = COHORTS[+cell.dataset.r], k = +cell.dataset.k;
+      hover(cell, () => `<b>${c.c} cohort · M${k}</b><div class="r"><span>Customers</span><span>${fmt(c.n)}</span></div>`
+        + (ret ? `<div class="r"><span>Bought again in M${k}</span><span>${pct(c.ret[k])}</span></div>`
+               : `<div class="r"><span>Revenue / customer M0–M${k}</span><span>$${c.ltv[k].toFixed(2)}</span></div>`)
+        + (+cell.dataset.r === 0 ? `<div style="opacity:.75;margin-top:4px">Left-censored: includes customers who bought before Oct 2019.</div>` : ""));
+    });
+  }
+  $("hm-ret").onclick = () => { heatMode = "ret"; setPressed($("hm-ret"), $("hm-ltv")); renderHeat(); };
+  $("hm-ltv").onclick = () => { heatMode = "ltv"; setPressed($("hm-ltv"), $("hm-ret")); renderHeat(); };
+
+  // ---------- simulator ----------
+  const lift = $("lift"), mr = $("mr");
+  const TICKS = [
+    { v: 19.0, l: "Oct<br>19.0%" },
+    { v: BREAK_EVEN * 100, l: "break-even<br>" + pct(BREAK_EVEN), be: true },
+    { v: C2P * 100, l: "today<br>" + pct(C2P), right: true },
+  ];
+  const tPos = v => ((v - mr.min) / (mr.max - mr.min)) * 100;
+  $("mrTicks").innerHTML = TICKS.map(t => `<button type="button" class="${t.be ? "be" : ""}" data-v="${t.v.toFixed(1)}" style="left:calc(${tPos(t.v)}% + ${11 - tPos(t.v) * 0.22}px)${t.right ? ";transform:translateX(-10%)" : t.be ? ";transform:translateX(-90%)" : ""}">${t.l}</button>`).join("");
+  $("mrTicks").querySelectorAll("button").forEach(b => b.onclick = () => { mr.value = b.dataset.v; updateSim(); });
+  function fill(r) { r.style.setProperty("--p", ((r.value - r.min) / (r.max - r.min) * 100) + "%"); }
+  function updateSim() {
+    fill(lift); fill(mr);
+    const L = +lift.value / 100, R = +mr.value / 100;
+    const buyA = ACQ * L * R, revA = buyA * AOV;
+    const buyC = ACT * L, revC = buyC * AOV;
+    $("liftV").textContent = "+" + (+lift.value).toFixed(1) + "pp";
+    $("mrV").textContent = (+mr.value).toFixed(1) + "%";
+    $("oRev").textContent = money(revA);
+    $("oBuy").textContent = fmt(buyA);
+    $("oYr").textContent = moneyShort(revA * 12);
+    $("oPct").textContent = "+" + pct(revA / BASELINE);
+    const mx = Math.max(revA, revC) || 1;
+    $("bA").style.width = `calc(${(revA / mx) * 100}% - ${(revA / mx) * 110}px)`;
+    $("bC").style.width = `calc(${(revC / mx) * 100}% - ${(revC / mx) * 110}px)`;
+    $("bA").classList.toggle("win", revA >= revC); $("bC").classList.toggle("win", revC > revA);
+    $("tA").textContent = moneyShort(revA) + " / mo";
+    $("tC").textContent = moneyShort(revC) + " / mo";
+    const diff = Math.abs(revA - revC);
+    $("verdict").innerHTML = diff < 500
+      ? `At ${pct(R)} the two lifts are worth the same. This is the <b>break-even point</b>.`
+      : revA > revC
+        ? `Lifting <b>visit→cart</b> wins by <b>${money(diff)}/mo</b>, because new carters buy at ${pct(R)}, above the ${pct(BREAK_EVEN)} break-even.`
+        : `Lifting <b>checkout</b> wins by <b>${money(diff)}/mo</b>. New carters buying at ${pct(R)} fall below the ${pct(BREAK_EVEN)} break-even${R <= 0.195 ? ", which is what happened in October" : ""}.`;
+  }
+  lift.addEventListener("input", updateSim); mr.addEventListener("input", updateSim);
+
+  // ---------- depth & split ----------
+  $("depth").innerHTML = DEPTH.map((d, i) => `<div class="d-row${i === 0 ? " first" : ""}" data-i="${i}">
+      <span class="n">${d.b} ${i === 0 ? "view" : "views"}</span>
+      <div class="d-track"><div class="d-fill" style="width:${d.rate * 100}%"></div><span class="share">${pct(d.share, 0)}</span></div>
+      <span class="p">${pct(d.rate)}</span></div>`).join("");
+  $("depth").querySelectorAll(".d-row").forEach(row => {
+    const d = DEPTH[+row.dataset.i];
+    hover(row, () => `<b>Viewed ${d.b} product${d.b === "1" ? "" : "s"}</b><div class="r"><span>Users</span><span>${fmt(d.users)}</span></div><div class="r"><span>Share of visitors</span><span>${pct(d.share)}</span></div><div class="r"><span>Added to cart</span><span>${pct(d.rate)}</span></div>`);
+  });
+  $("depthTable").innerHTML = DEPTH.map(d => `<tr><td>${d.b}</td><td>${fmt(d.users)}</td><td>${pct(d.share)}</td><td>${pct(d.rate)}</td></tr>`).join("");
+  const NON = 1241050, SPLIT = [
+    { cls: "a", n: 757628, label: "Bounced (≤1 view)" },
+    { cls: "b", n: 126129, label: "High intent, never carted" },
+    { cls: "c2", n: NON - 757628 - 126129, label: "Everyone else" },
+  ];
+  $("split").innerHTML = SPLIT.map((s, i) => `<div class="${s.cls}" data-i="${i}" style="flex:${s.n}">${pct(s.n / NON, 0)}</div>`).join("");
+  $("split").querySelectorAll("div").forEach(dv => {
+    const s = SPLIT[+dv.dataset.i];
+    hover(dv, () => `<b>${s.label}</b><div class="r"><span>Users</span><span>${fmt(s.n)}</span></div><div class="r"><span>Share of non-carters</span><span>${pct(s.n / NON)}</span></div>`);
+  });
+
+  // ---------- rail highlighting ----------
+  const links = [...document.querySelectorAll(".rail nav a")];
+  const secs = links.map(a => document.querySelector(a.getAttribute("href")));
+  function onScroll() {
+    const yy = scrollY + 140; let cur = -1;
+    secs.forEach((s, i) => { if (s.offsetTop <= yy) cur = i; });
+    links.forEach((a, i) => a.classList.toggle("on", i === cur));
+  }
+  addEventListener("scroll", onScroll, { passive: true });
+
+  // ---------- boot & re-render ----------
+  function renderAll() { renderLine(); renderHeat(); }
+  renderFunnel(); renderAll(); updateSim(); onScroll();
+  let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(renderLine, 120); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", renderHeat);
+  new MutationObserver(renderHeat).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+})();
+</script>
+
+</body>
+</html>
